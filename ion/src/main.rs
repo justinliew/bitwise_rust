@@ -16,37 +16,35 @@ fn print_token(t: Token) {
     }
 }
 
-fn next_token(stream_iter : &mut std::str::Chars) -> Option<Token> {
+fn next_token(stream_iter : &mut std::iter::Peekable<std::str::Chars>) -> Option<Token> {
 
     let first = match stream_iter.next() {
         Some(x) => x,
         None => return None
     };
 
-    // TODO: I'm taking the approach from a C implementation of this
-    // can we do this properly with just match, instead of the inner loop iterations?
-    // also this consumes the character after an integer or name token since we are advancing the iterator, failing to match and then returning
     match first {
         '0'..='9' => {
             let first_digit = first as u64 - ('0' as u64);
             let mut val : u64 = first_digit;
 
             loop {
-                let peek = match stream_iter.peekable().peek() {
-                    Some(x) => x,
-                    None => {
-                        // TODO return
-                        return None
+                {
+                    let peek = match stream_iter.peek() {
+                        Some(x) => x,
+                        None => {
+                            return Some(Token::Integer(val));
+                        }
+                    };
+                    if peek.is_digit(10) {
+                        let digit = *peek as u64 - ('0' as u64);
+                        val *= 10;
+                        val += digit;                
+                    } else {
+                        break;
                     }
-                };
-                if peek.is_digit(10) {
-                    let digit = *peek as u64 - ('0' as u64);
-                    val *= 10;
-                    val += digit;                
-                    stream_iter.next();
-                } else {
-                    break;
                 }
+                stream_iter.next();
             }
             return Some(Token::Integer(val))
         },
@@ -55,20 +53,21 @@ fn next_token(stream_iter : &mut std::str::Chars) -> Option<Token> {
             name.push(first);
 
             loop {
-                let peek = match stream_iter.peekable().peek() {
-                    Some(x) => x,
-                    None => {
-                        // TODO return
-                        return None
-                    }
-                };
+                {
+                    let peek = match stream_iter.peek() {
+                        Some(x) => x,
+                        None => {
+                            return Some(Token::Name(name))
+                        }
+                    };
 
-                if peek.is_alphanumeric() {
-                    name.push(*peek);
-                    stream_iter.next();
-                } else {
-                    break;
+                    if peek.is_alphanumeric() {
+                        name.push(*peek);
+                    } else {
+                        break;
+                    }
                 }
+                stream_iter.next();
             }
             return Some(Token::Name(name))
         },
@@ -78,7 +77,7 @@ fn next_token(stream_iter : &mut std::str::Chars) -> Option<Token> {
 
 fn lex_test() {
     let input = "+()1234+994abc";
-    let mut iter = input.chars();
+    let mut iter = input.chars().peekable();
     loop  {
         let t = next_token(&mut iter);
         match t {
