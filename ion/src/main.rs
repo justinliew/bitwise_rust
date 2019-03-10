@@ -1,10 +1,132 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // TODO string interning
 
-#[derive(Debug)]
+// Simple test Expression grammar:
+// expr3 = INT | '(' expr ')' 
+// expr2 = '-'? expr2 | expr3
+// expr1 = expr2 ([/*] expr2)*
+// expr0 = expr1 ([+-] expr1)*
+// expr = expr0
+
+fn parse_expr3(stream: &mut LexStream) {
+    match stream.get_token() {
+        Some(Token::Integer(n)) => {
+            println!("Found int {}", n);
+            stream.next_token();
+        },
+        Some(Token::Symbol(s)) => {
+            if s == '(' {
+                parse_expr(stream);
+                stream.get_token().unwrap().expect_token(&Token::Symbol(')'),stream);
+            } else {
+            assert!(false, "Expected INT or '('; got {:?}", s)
+            }
+        },
+        Some(n) => {
+            assert!(false, "Expected INT or '('; got {:?}", n);
+        }
+        None => {
+            assert!(false, "Expected INT or '('; got nothing");
+        }
+    };
+}
+
+fn parse_expr2(stream: &mut LexStream) {
+    match stream.get_token() {
+        Some(n) => {
+            if n.match_token(&Token::Symbol('-'), stream) {
+                parse_expr3(stream);
+            } else {
+                parse_expr3(stream);
+            }
+        },
+        None => {}
+    }
+}
+
+fn parse_expr1(stream: &mut LexStream) {
+    parse_expr2(stream);
+    loop {
+        match stream.get_token() {
+            Some(Token::Symbol(s)) => {
+                if s == '/' || s == '*' {
+                    stream.next_token();
+                    parse_expr2(stream);
+                } else {
+                    break;
+                }
+            },
+            _ => {break;}
+        }
+    }
+}
+
+fn parse_expr0(stream: &mut LexStream) {
+    parse_expr1(stream);
+    loop {
+        match stream.get_token() {
+            Some(Token::Symbol(s)) => {
+                if s == '+' || s == '-' {
+                    stream.next_token();
+                    parse_expr1(stream);
+                } else {
+                    break;
+                }
+            },
+            _ => {break;}
+        }
+    }
+}
+
+fn parse_expr(stream: &mut LexStream) {
+    stream.next_token();
+    parse_expr0(stream);
+}
+
+fn parse_test() {
+    let input = "-3+4+(5*6)";
+    let mut stream = LexStream::init(input);
+    parse_expr(&mut stream);
+}
+
+#[derive(Debug,Clone,PartialEq)]
 enum Token {
     Integer(u64),
     Name(String),
     Symbol(char),
+}
+
+impl Token {
+   fn is_token(&self, kind: &Token) -> bool {
+       return self == kind
+    }
+
+    fn is_token_name(&self, name: &str) -> bool {
+        match self {
+            Token::Name(n) => n == name,
+            _ => false 
+        }
+    }
+
+    fn match_token(&self, kind: &Token, stream: &mut LexStream) -> bool {
+        if self.is_token(kind) {
+            stream.next_token();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn expect_token(&self, kind: &Token, stream: &mut LexStream) -> bool {
+        if self.is_token(kind) {
+            stream.next_token();
+            true
+        } else {
+            assert!(false, "Expected token {:?}, got {:?}", kind, self);
+            false
+        }
+    }
 }
 
 fn print_token(t: Token) {
@@ -15,47 +137,28 @@ fn print_token(t: Token) {
     }
 }
 
-// we should create a single "current token"
-
-fn is_token(kind: Token) -> bool {
-    // token.kind == kind
-    false
-}
-
-fn is_token_name(name: &str) -> bool {
-    // token.kind == TOKEN_NAME && token.name == name
-    false
-}
-
-fn match_token(kind: Token) -> bool {
-    // if is_token(kind) then next_token() return true; else return false
-    false
-}
-
-fn expect_token(kind: Token) -> bool {
-    // if is_token(kind) then next_token() return true; else return false
-    // difference is we assert/error if we don't match
-    false
-}
-
 struct LexStream<'a> {
     stream: String,
-    stream_iter: std::iter::Peekable<std::str::Chars<'a>>
+    stream_iter: std::iter::Peekable<std::str::Chars<'a>>,
+    token: Option<Token>
 }
 
 impl<'a> LexStream<'a> {
     fn init(input: &str) -> LexStream {
         LexStream{
             stream: input.to_string(),
-            stream_iter: input.chars().peekable()}
+            stream_iter: input.chars().peekable(),
+            token: None
+        }
     }
 
-    //stream_iter : &mut std::iter::Peekable<std::str::Chars>
-    fn next_token(&mut self) -> Option<Token> {
-
+    fn next_token(&mut self) {
         let first = match self.stream_iter.next() {
             Some(x) => x,
-            None => return None
+            None => {
+                self.token = None;
+                return
+            }
         };
 
         match first {
@@ -68,7 +171,8 @@ impl<'a> LexStream<'a> {
                         let peek = match self.stream_iter.peek() {
                             Some(x) => x,
                             None => {
-                                return Some(Token::Integer(val));
+                                self.token = Some(Token::Integer(val));
+                                return
                             }
                         };
                         if peek.is_digit(10) {
@@ -81,7 +185,8 @@ impl<'a> LexStream<'a> {
                     }
                     self.stream_iter.next();
                 }
-                return Some(Token::Integer(val))
+                self.token = Some(Token::Integer(val));
+                return
             },
             'a'..='z' | 'A'..='Z' | '_' => {
                 let mut name = String::new();
@@ -92,7 +197,8 @@ impl<'a> LexStream<'a> {
                         let peek = match self.stream_iter.peek() {
                             Some(x) => x,
                             None => {
-                                return Some(Token::Name(name))
+                                self.token = Some(Token::Name(name));
+                                return
                             }
                         };
 
@@ -104,10 +210,18 @@ impl<'a> LexStream<'a> {
                     }
                     self.stream_iter.next();
                 }
-                return Some(Token::Name(name))
+                self.token = Some(Token::Name(name));
+                return
             },
-            _ => return Some(Token::Symbol(first))
+            _ => {
+                self.token = Some(Token::Symbol(first));
+                return
+            }
         };
+    }
+
+    fn get_token(&self) -> Option<Token> {
+        self.token.clone()
     }
 }
 
@@ -115,8 +229,8 @@ fn lex_test() {
     let input = "XY+(XY)_HELLO1,234+FOO!994";
     let mut stream = LexStream::init(input);
     loop  {
-        let t = stream.next_token();
-        match t {
+        stream.next_token();
+        match stream.get_token() {
             Some(token) => print_token(token),
             None => break
         }
@@ -124,5 +238,6 @@ fn lex_test() {
 }
 
 fn main() {
-    lex_test()
+    lex_test();
+    parse_test();
 }
