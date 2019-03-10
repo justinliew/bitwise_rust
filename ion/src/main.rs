@@ -9,90 +9,106 @@
 // expr0 = expr1 ([+-] expr1)*
 // expr = expr0
 
-fn parse_expr3(stream: &mut LexStream) {
+fn parse_expr3(stream: &mut LexStream) -> i64 {
     match stream.get_token() {
         Some(Token::Integer(n)) => {
-            println!("Found int {}", n);
             stream.next_token();
+            n as i64
         },
         Some(Token::Symbol(s)) => {
             if s == '(' {
-                parse_expr(stream);
+                let ret = parse_expr(stream);
                 stream.get_token().unwrap().expect_token(&Token::Symbol(')'),stream);
+                ret
             } else {
-            assert!(false, "Expected INT or '('; got {:?}", s)
+            assert!(false, "Expected INT or '('; got {:?}", s);
+            0
             }
         },
         Some(n) => {
             assert!(false, "Expected INT or '('; got {:?}", n);
+            0
         }
         None => {
             assert!(false, "Expected INT or '('; got nothing");
+            0
         }
-    };
-}
-
-fn parse_expr2(stream: &mut LexStream) {
-    match stream.get_token() {
-        Some(n) => {
-            if n.match_token(&Token::Symbol('-'), stream) {
-                parse_expr3(stream);
-            } else {
-                parse_expr3(stream);
-            }
-        },
-        None => {}
     }
 }
 
-fn parse_expr1(stream: &mut LexStream) {
-    parse_expr2(stream);
+fn parse_expr2(stream: &mut LexStream) -> i64 {
+    match stream.get_token() {
+        Some(n) => {
+            if n.match_token(&Token::Symbol('-'), stream) {
+                -parse_expr3(stream)
+            } else {
+                parse_expr3(stream)
+            }
+        },
+        None => 0
+    }
+}
+
+fn parse_expr1(stream: &mut LexStream) -> i64 {
+    let mut val = parse_expr2(stream);
     loop {
         match stream.get_token() {
             Some(Token::Symbol(s)) => {
                 if s == '/' || s == '*' {
                     stream.next_token();
-                    parse_expr2(stream);
-                } else {
-                    break;
-                }
+                    let rval = parse_expr2(stream);
+                    match (s,rval) {
+                        ('/',0) => assert!(false, "Cannot divide by 0"),
+                        ('/',n) => val /= n,
+                        ('*',_) => val *= rval,
+                        (_,_) => {}
+                    }
+                } else {break;}
             },
             _ => {break;}
         }
-    }
+    };
+    val
 }
 
-fn parse_expr0(stream: &mut LexStream) {
-    parse_expr1(stream);
+fn parse_expr0(stream: &mut LexStream) -> i64 {
+    let mut val = parse_expr1(stream);
     loop {
         match stream.get_token() {
             Some(Token::Symbol(s)) => {
                 if s == '+' || s == '-' {
                     stream.next_token();
-                    parse_expr1(stream);
+                    let rval = parse_expr1(stream);
+                    match s {
+                        '+' => val += rval,
+                        '-' => val -= rval,
+                        _ => {}
+                    }
                 } else {
                     break;
                 }
             },
             _ => {break;}
         }
-    }
+    };
+    val
 }
 
-fn parse_expr(stream: &mut LexStream) {
+fn parse_expr(stream: &mut LexStream) -> i64 {
     stream.next_token();
-    parse_expr0(stream);
+    parse_expr0(stream)
 }
 
 fn parse_test() {
     let input = "-3+4+(5*6)";
     let mut stream = LexStream::init(input);
-    parse_expr(&mut stream);
-
+    let out = parse_expr(&mut stream);
+    println!("Calculated {}",out);
 
     let input2 = "(1)";
     let mut stream2 = LexStream::init(input2);
-    parse_expr(&mut stream2);
+    let out2 = parse_expr(&mut stream2);
+    println!("Calculated {}",out2);
 }
 
 #[derive(Debug,Clone,PartialEq)]
