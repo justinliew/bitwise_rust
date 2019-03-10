@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // TODO string interning
+// TODO more tests, better way of doing tests
 
 // Simple test Expression grammar:
 // expr3 = INT | '(' expr ')' 
@@ -40,7 +41,7 @@ fn parse_expr2(stream: &mut LexStream) -> i64 {
     match stream.get_token() {
         Some(n) => {
             if n.match_token(&Token::Symbol('-'), stream) {
-                -parse_expr3(stream)
+                -parse_expr2(stream)
             } else {
                 parse_expr3(stream)
             }
@@ -109,6 +110,11 @@ fn parse_test() {
     let mut stream2 = LexStream::init(input2);
     let out2 = parse_expr(&mut stream2);
     println!("Calculated {}",out2);
+
+    let input3 = "2*3+4*6";
+    let mut stream3 = LexStream::init(input3);
+    let out3 = parse_expr(&mut stream3);
+    println!("Calculated {}",out3);
 }
 
 #[derive(Debug,Clone,PartialEq)]
