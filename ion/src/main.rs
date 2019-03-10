@@ -88,6 +88,11 @@ fn parse_test() {
     let input = "-3+4+(5*6)";
     let mut stream = LexStream::init(input);
     parse_expr(&mut stream);
+
+
+    let input2 = "(1)";
+    let mut stream2 = LexStream::init(input2);
+    parse_expr(&mut stream2);
 }
 
 #[derive(Debug,Clone,PartialEq)]
