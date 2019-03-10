@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "C:\\dev\\bitwise_rust"
+		}
+	],
+	"settings": {
+		"debug.allowBreakpointsEverywhere": true
+	}
+}
