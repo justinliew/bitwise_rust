@@ -1,5 +1,5 @@
-use lexer::LexStream;
-use lexer::Token;
+use crate::lexer::LexStream;
+use crate::lexer::Token;
 use std::vec;
 
 // we should be able to take an expression, convert it to bytecode, and then write the bytecode stack machine to run it and output the result.
@@ -32,16 +32,16 @@ fn parse_expr3(stream: &mut LexStream) -> Vec<u32> {
                 ret
             } else {
             assert!(false, "Expected INT or '('; got {:?}", s);
-            return;
+            vec![]
             }
         },
         Some(n) => {
             assert!(false, "Expected INT or '('; got {:?}", n);
-            return;
+            vec![]
         }
         None => {
             assert!(false, "Expected INT or '('; got nothing");
-            return;
+            vec![]
         }
     }
 }
@@ -57,7 +57,7 @@ fn parse_expr2(stream: &mut LexStream) -> Vec<u32> {
                 parse_expr3(stream)
             }
         },
-        None => return
+        None => vec![]
     }
 }
 
@@ -68,12 +68,17 @@ fn parse_expr1(stream: &mut LexStream) -> Vec<u32> {
             Some(Token::Symbol(s)) => {
                 if s == '/' || s == '*' {
                     stream.next_token();
-                    let rval = parse_expr2(stream);
-                    match (s,rval) {
-                        ('/',0) => assert!(false, "Cannot divide by 0"),
-                        ('/',n) => val /= n,
-                        ('*',_) => val *= rval,
-                        (_,_) => {}
+                    let mut rval = parse_expr2(stream);
+                    match s {
+                        '/' => {
+                            val.append(&mut rval);
+                            val.push(DIV);
+                        },
+                        '*' => {
+                            val.append(&mut rval);
+                            val.push(MUL);
+                        },
+                        _ => {}
                     }
                 } else {break;}
             },
@@ -84,21 +89,21 @@ fn parse_expr1(stream: &mut LexStream) -> Vec<u32> {
 }
 
 fn parse_expr0(stream: &mut LexStream) -> Vec<u32> {
-    let mut lval = parse_expr1(stream);
+    let mut val = parse_expr1(stream);
     loop {
         match stream.get_token() {
             Some(Token::Symbol(s)) => {
                 if s == '+' || s == '-' {
                     stream.next_token();
-                    let rval = parse_expr1(stream);
+                    let mut rval = parse_expr1(stream);
                     match s {
                         '+' => {
-                            lval.append(rval);
-                            lval.push(ADD);
+                            val.append(&mut rval);
+                            val.push(ADD);
                         },
                         '-' => {
-                            lval.append(rval);
-                            lval.push(SUB);
+                            val.append(&mut rval);
+                            val.push(SUB);
                         }
                         _ => {}
                     }
@@ -109,15 +114,15 @@ fn parse_expr0(stream: &mut LexStream) -> Vec<u32> {
             _ => {break;}
         }
     };
-    lval
+    val
 }
 
-fn parse_expr(stream: &mut LexStream, out: &mut Vec<u32>) {
+fn parse_expr(stream: &mut LexStream) -> Vec<u32> {
     stream.next_token();
     parse_expr0(stream)
 }
 
-fn run_bytecode(code: &[u8]) -> u64 {
+fn run_bytecode(code: &[u32]) -> u64 {
     42
 }
 
@@ -127,12 +132,15 @@ fn run_bytecode(code: &[u8]) -> u64 {
 // MUL
 // DIV
 
-fn gen_bytecode(stream: &mut LexStream) -> Vec<u8> {
-    vec![0]
+fn gen_bytecode(stream: &mut LexStream) -> Vec<u32> {
+    let res = parse_expr(stream);
+    println!("gen_bytecode: {:?}", res);
+    res
 }
 
 pub fn bytecode_stack_test() {
-    let input = "-3+4+(5*6)";
+//    let input = "-3+4+(5*6)";
+    let input = "-1+2";
     let mut stream = LexStream::init(input);
 
     let bytecode = gen_bytecode(&mut stream);
