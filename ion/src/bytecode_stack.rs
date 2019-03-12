@@ -21,7 +21,7 @@ const HALT : u64 = 7;
 
 fn parse_expr3(stream: &mut LexStream) -> Vec<u64> {
     match stream.get_token() {
-        Some(Token::Integer(n)) => {
+        Some(Token::Integer(n,_)) => {
             stream.next_token();
             vec![LIT,n as u64]
         },

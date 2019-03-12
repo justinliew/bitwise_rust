@@ -21,6 +21,15 @@ pub fn lex_test() {
     }
 
     // TODO add integer overflow test
+    let input2 = "0x10+0b10+080";
+    let mut stream2 = LexStream::init(input2);
+    loop  {
+        stream2.next_token();
+        match stream2.get_token() {
+            Some(token) => lexer::print_token(token),
+            None => break
+        }
+    }
 }
 
 fn main() {

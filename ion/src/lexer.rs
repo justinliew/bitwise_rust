@@ -3,8 +3,17 @@ fn syntax_error(s : String) {
 }
 
 #[derive(Debug,Clone,PartialEq)]
+pub enum TokenMod
+{
+    Dec,
+    Hex,
+    Bin,
+    Oct,
+}
+
+#[derive(Debug,Clone,PartialEq)]
 pub enum Token {
-    Integer(u64),
+    Integer(u64, TokenMod),
     Name(String),
     Symbol(char),
 }
@@ -43,10 +52,14 @@ impl Token {
 
 pub fn print_token(t: Token) {
     match t {
-        Token::Integer(i) => println!("Int: {}",i),
+        Token::Integer(i,_) => println!("Int: {}",i),
         Token::Name(n) => println!("Name: {}",n),
         Token::Symbol(s) => println!("Symbol: {}", s),
     }
+}
+
+fn is_valid_digit() -> bool {
+    false
 }
 
 pub struct LexStream<'a> {
@@ -64,6 +77,55 @@ impl<'a> LexStream<'a> {
         }
     }
 
+    fn scan_int(&mut self, first: char) -> (u64, TokenMod) {
+        let first_digit = first as u8 - ('0' as u8);
+        let mut val : u64 = first_digit as u64;
+
+        // 0x123456789abcdef
+        let mut base = 10;
+        let mut token_mod = TokenMod::Dec;
+        if  first_digit == 0 {
+            let cur = match self.stream_iter.next() {
+                Some(x) => x,
+                None => {self.token = None; return (val,token_mod);}
+            }.to_lowercase().to_string();
+            if cur == "x" {
+                base = 16;
+                token_mod = TokenMod::Hex;
+            } else if cur == "b" {
+                base = 2;
+                token_mod = TokenMod::Bin;
+            } else {
+                base = 8;
+                token_mod = TokenMod::Oct;
+            }
+        }
+
+        loop {
+            {
+                let peek = match self.stream_iter.peek() {
+                    Some(x) => x,
+                    None => {
+                        return (val,token_mod)
+                    }
+                };
+                if peek.is_digit(10) {
+                    let digit = *peek as u64 - ('0' as u64);
+                    if val > (std::u64::MAX - digit)/10 {
+                        syntax_error(format!("Integer overflow: {}", val));
+                        // TODO skip over remaining digits
+                    }
+                    val *= 10;
+                    val += digit;                
+                } else {
+                    break;
+                }
+            }
+            self.stream_iter.next();
+        }
+        (val,token_mod)
+    }
+
     pub fn next_token(&mut self) {
         let first = match self.stream_iter.next() {
             Some(x) => x,
@@ -75,35 +137,8 @@ impl<'a> LexStream<'a> {
 
         match first {
             '0'..='9' => {
-                let first_digit = first as u64 - ('0' as u64);
-                let mut val : u64 = first_digit;
-
-                // TODO extract this loop into a scan_int method
-                // handle hex
-                loop {
-                    {
-                        let peek = match self.stream_iter.peek() {
-                            Some(x) => x,
-                            None => {
-                                self.token = Some(Token::Integer(val));
-                                return
-                            }
-                        };
-                        if peek.is_digit(10) {
-                            let digit = *peek as u64 - ('0' as u64);
-                            if val > (std::u64::MAX - digit)/10 {
-                                syntax_error(format!("Integer overflow: {}", val));
-                                // TODO skip over remaining digits
-                            }
-                            val *= 10;
-                            val += digit;                
-                        } else {
-                            break;
-                        }
-                    }
-                    self.stream_iter.next();
-                }
-                self.token = Some(Token::Integer(val));
+                let (val,base) = self.scan_int(first);
+                self.token = Some(Token::Integer(val,base));
                 return
             },
             'a'..='z' | 'A'..='Z' | '_' => {
