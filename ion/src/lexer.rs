@@ -1,3 +1,7 @@
+fn syntax_error(s : String) {
+    println!("Syntax error: {}", s);
+}
+
 #[derive(Debug,Clone,PartialEq)]
 pub enum Token {
     Integer(u64),
@@ -74,6 +78,8 @@ impl<'a> LexStream<'a> {
                 let first_digit = first as u64 - ('0' as u64);
                 let mut val : u64 = first_digit;
 
+                // TODO extract this loop into a scan_int method
+                // handle hex
                 loop {
                     {
                         let peek = match self.stream_iter.peek() {
@@ -85,6 +91,10 @@ impl<'a> LexStream<'a> {
                         };
                         if peek.is_digit(10) {
                             let digit = *peek as u64 - ('0' as u64);
+                            if val > (std::u64::MAX - digit)/10 {
+                                syntax_error(format!("Integer overflow: {}", val));
+                                // TODO skip over remaining digits
+                            }
                             val *= 10;
                             val += digit;                
                         } else {

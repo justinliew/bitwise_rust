@@ -19,6 +19,8 @@ pub fn lex_test() {
             None => break
         }
     }
+
+    // TODO add integer overflow test
 }
 
 fn main() {
