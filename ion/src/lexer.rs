@@ -58,8 +58,24 @@ pub fn print_token(t: Token) {
     }
 }
 
-fn is_valid_digit() -> bool {
-    false
+fn try_valid_digit(c : char, base : u64) -> Option<u64> {
+    let val = match c {
+        '0'..='9' => {
+            c as u64 - '0' as u64
+        },
+        'a'..='f' => {
+            c as u64 - 'a' as u64 + 10
+        },
+        'A'..='F' => {
+            c as u64 - 'A' as u64 + 10
+        },
+        _ => base // kind of a weird hack to indicate we are out of range
+    };
+    if val < base {
+        Some(val)
+    } else {
+        None
+    }
 }
 
 pub struct LexStream<'a> {
@@ -109,14 +125,12 @@ impl<'a> LexStream<'a> {
                         return (val,token_mod)
                     }
                 };
-                if peek.is_digit(10) {
-                    let digit = *peek as u64 - ('0' as u64);
-                    if val > (std::u64::MAX - digit)/10 {
+                if let Some(digit) = try_valid_digit(*peek,base) {
+                    if val > (std::u64::MAX - digit)/base {
                         syntax_error(format!("Integer overflow: {}", val));
                         // TODO skip over remaining digits
                     }
-                    val *= 10;
-                    val += digit;                
+                    val = val*base+digit;
                 } else {
                     break;
                 }
