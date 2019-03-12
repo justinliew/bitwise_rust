@@ -101,16 +101,18 @@ impl<'a> LexStream<'a> {
         let mut base = 10;
         let mut token_mod = TokenMod::Dec;
         if  first_digit == 0 {
-            let cur = match self.stream_iter.next() {
+            let cur = match self.stream_iter.peek() {
                 Some(x) => x,
                 None => {self.token = None; return (val,token_mod);}
             }.to_lowercase().to_string();
             if cur == "x" {
                 base = 16;
                 token_mod = TokenMod::Hex;
+                self.stream_iter.next();
             } else if cur == "b" {
                 base = 2;
                 token_mod = TokenMod::Bin;
+                self.stream_iter.next();
             } else {
                 base = 8;
                 token_mod = TokenMod::Oct;
