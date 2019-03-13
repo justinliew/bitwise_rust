@@ -71,6 +71,7 @@ fn try_valid_digit(c : char, base : u64) -> Option<u64> {
         },
         _ => base // kind of a weird hack to indicate we are out of range
     };
+    // TODO - what if we have an invalid digit
     if val < base {
         Some(val)
     } else {

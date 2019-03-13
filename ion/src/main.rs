@@ -10,6 +10,7 @@ use lexer::LexStream;
 // TODO more tests, better way of doing tests
 
 pub fn lex_test() {
+    println!("Lex Test 1");
     let input = "XY+(XY)_HELLO1,234+FOO!994";
     let mut stream = LexStream::init(input);
     loop  {
@@ -20,8 +21,8 @@ pub fn lex_test() {
         }
     }
 
-    // TODO add integer overflow test
-    let input2 = "0x10+0b10+080";
+    println!("Lex Test 2");
+    let input2 = "070";
     let mut stream2 = LexStream::init(input2);
     loop  {
         stream2.next_token();

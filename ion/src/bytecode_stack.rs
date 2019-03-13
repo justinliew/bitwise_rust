@@ -143,8 +143,6 @@ fn run_bytecode(code: &[u64]) -> u64 {
             None => return *stack.first().unwrap() // TODO ensure this is the right answer and that the stack is 1 element
         };
 
-        println!("Handling opcode: {}", v);
-        println!("Current stack: {:?}", stack);
         match *v {
             LIT => {
                 let literal = match iter.next() {
@@ -200,6 +198,7 @@ fn gen_bytecode(stream: &mut LexStream) -> Vec<u64> {
 }
 
 pub fn bytecode_stack_test() {
+    println!("Bytecode evaluation test");
     let input = "3+4+(5*6)";
     let mut stream = LexStream::init(input);
 
