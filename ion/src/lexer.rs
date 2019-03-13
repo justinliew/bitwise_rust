@@ -155,8 +155,16 @@ impl<'a> LexStream<'a> {
         match first {
             '0'..='9' => {
                 let (val,base) = self.scan_int(first);
-                self.token = Some(Token::Integer(val,base));
-                return
+                let is_float = match self.stream_iter.peek() {
+                    Some('.') => true,
+//                    Some('e') => true,
+                    Some(_) | None => {
+                        self.token = Some(Token::Integer(val,base));
+                        return
+                    }
+                };
+                println!("FLOAT {}", is_float);
+
             },
             'a'..='z' | 'A'..='Z' | '_' => {
                 let mut name = String::new();
