@@ -22,7 +22,7 @@ pub fn lex_test() {
     }
 
     println!("Lex Test 2");
-    let input2 = "10.2";
+    let input2 = ".2453678";
     let mut stream2 = LexStream::init(input2);
     loop  {
         stream2.next_token();

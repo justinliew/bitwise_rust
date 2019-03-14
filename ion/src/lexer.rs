@@ -14,6 +14,7 @@ pub enum TokenMod
 #[derive(Debug,Clone,PartialEq)]
 pub enum Token {
     Integer(u64, TokenMod),
+    Float(f64),
     Name(String),
     Symbol(char),
 }
@@ -55,6 +56,7 @@ pub fn print_token(t: Token) {
         Token::Integer(i,_) => println!("Int: {}",i),
         Token::Name(n) => println!("Name: {}",n),
         Token::Symbol(s) => println!("Symbol: {}", s),
+        Token::Float(f) => println!("Float: {}", f)
     }
 }
 
@@ -92,6 +94,29 @@ impl<'a> LexStream<'a> {
             stream_iter: input.chars().peekable(),
             token: None
         }
+    }
+
+    fn scan_float(&mut self, whole: u64) -> f64 {
+        let mut ret : f64 = whole as f64;
+        let mut place = 1;
+        loop {
+            {
+                let peek = match self.stream_iter.peek() {
+                    Some(x) => x,
+                    None => {
+                        return ret
+                    }
+                };
+                if let Some(digit) = try_valid_digit(*peek,10) {
+                    place *= 10;
+                    ret = ret + (digit as f64 / place as f64);
+                } else {
+                    break;
+                }
+            }
+            self.stream_iter.next();
+        };
+        ret
     }
 
     fn scan_int(&mut self, first: char) -> (u64, TokenMod) {
@@ -153,6 +178,9 @@ impl<'a> LexStream<'a> {
         };
 
         match first {
+            '.' => {
+                self.token = Some(Token::Float(self.scan_float(0)));
+            }
             '0'..='9' => {
                 let (val,base) = self.scan_int(first);
                 let is_float = match self.stream_iter.peek() {
@@ -163,8 +191,10 @@ impl<'a> LexStream<'a> {
                         return
                     }
                 };
-                println!("FLOAT {}", is_float);
-
+                if is_float && base == TokenMod::Dec || base == TokenMod::Oct {
+                    self.stream_iter.next(); //consume the .
+                    self.token = Some(Token::Float(self.scan_float(val)));
+                }
             },
             'a'..='z' | 'A'..='Z' | '_' => {
                 let mut name = String::new();
