@@ -21,12 +21,24 @@ pub fn lex_test() {
         }
     }
 
+    // TODO whitepsace
     println!("Lex Test 2");
-    let input2 = ".2453678";
+    let input2 = ".2453678 123 'c'";
     let mut stream2 = LexStream::init(input2);
     loop  {
         stream2.next_token();
         match stream2.get_token() {
+            Some(token) => lexer::print_token(token),
+            None => break
+        }
+    }
+
+    println!("Lex Test 3");
+    let input3 = "'ca' 123";
+    let mut stream3 = LexStream::init(input3);
+    loop  {
+        stream3.next_token();
+        match stream3.get_token() {
             Some(token) => lexer::print_token(token),
             None => break
         }

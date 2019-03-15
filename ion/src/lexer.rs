@@ -17,6 +17,7 @@ pub enum Token {
     Float(f64),
     Name(String),
     Symbol(char),
+    Char(char),
 }
 
 impl Token {
@@ -56,7 +57,8 @@ pub fn print_token(t: Token) {
         Token::Integer(i,_) => println!("Int: {}",i),
         Token::Name(n) => println!("Name: {}",n),
         Token::Symbol(s) => println!("Symbol: {}", s),
-        Token::Float(f) => println!("Float: {}", f)
+        Token::Float(f) => println!("Float: {}", f),
+        Token::Char(c) => println!("Char: {}", c),
     }
 }
 
@@ -96,6 +98,40 @@ impl<'a> LexStream<'a> {
         }
     }
 
+    fn scan_char(&mut self) -> Option<char> {
+        let next = self.stream_iter.next();
+        let val = match next {
+            Some('\'') => {
+                syntax_error(format!("Char literal cannot be empty"));
+                return None
+            },
+            Some('\n') => {
+                syntax_error(format!("Char literal cannot have a newline"));
+                return None
+            },
+            Some('\\') => {
+                // TODO escape chars
+                'a'
+            },
+            None => {
+                syntax_error(format!("Missing closing character literal"));
+                return None;
+            },
+            Some(x) => {
+                x
+            }
+        };
+        let close = self.stream_iter.next();
+        if let Some('\'') = close {
+            Some(val)
+        } else {
+            syntax_error(format!("Missing closing character quote mark"));
+            None
+        }
+    }
+
+    // TODO maybe change this to "string".parse().unwrap()
+    // check if we get x.ye+/-N
     fn scan_float(&mut self, whole: u64) -> f64 {
         let mut ret : f64 = whole as f64;
         let mut place = 1;
@@ -220,6 +256,13 @@ impl<'a> LexStream<'a> {
                 }
                 self.token = Some(Token::Name(name));
                 return
+            },
+            '\'' => {
+                let ret = self.scan_char();
+                if let Some(c) = ret {
+                    //
+                    self.token = Some(Token::Char(c));
+                }
             },
             _ => {
                 self.token = Some(Token::Symbol(first));
