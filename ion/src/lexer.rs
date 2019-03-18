@@ -18,6 +18,7 @@ pub enum Token {
     Name(String),
     Symbol(char),
     Char(char),
+    Str(String),
 }
 
 impl Token {
@@ -59,6 +60,7 @@ pub fn print_token(t: Token) {
         Token::Symbol(s) => println!("Symbol: {}", s),
         Token::Float(f) => println!("Float: {}", f),
         Token::Char(c) => println!("Char: {}", c),
+        Token::Str(s) => println!("String: {}", s),
     }
 }
 
@@ -75,7 +77,6 @@ fn try_valid_digit(c : char, base : u64) -> Option<u64> {
         },
         _ => base // kind of a weird hack to indicate we are out of range
     };
-    // TODO - what if we have an invalid digit
     if val < base {
         Some(val)
     } else {
@@ -98,20 +99,37 @@ impl<'a> LexStream<'a> {
         }
     }
 
+    fn scan_str(&mut self) -> Option<String> {
+        let mut ret : String;
+        loop {
+            let mut next = self.stream_iter.next();
+            let val = match next { 
+                Some('\"') => {
+                },
+                None => {
+                    syntax_error(format!("Missing closing string literal"));
+                    return None;
+                },
+                Some(x) => {
+                    x
+                }
+            };
+            let close = self.stream_iter.next();
+            if let Some('\'') = close {
+                Some(val)
+            } else {
+                syntax_error(format!("Missing closing string quote mark"));
+                None
+            }        
+        }
+    }
+
     fn scan_char(&mut self) -> Option<char> {
         let next = self.stream_iter.next();
         let val = match next {
             Some('\'') => {
                 syntax_error(format!("Char literal cannot be empty"));
                 return None
-            },
-            Some('\n') => {
-                syntax_error(format!("Char literal cannot have a newline"));
-                return None
-            },
-            Some('\\') => {
-                // TODO escape chars
-                'a'
             },
             None => {
                 syntax_error(format!("Missing closing character literal"));
@@ -221,7 +239,7 @@ impl<'a> LexStream<'a> {
                 let (val,base) = self.scan_int(first);
                 let is_float = match self.stream_iter.peek() {
                     Some('.') => true,
-//                    Some('e') => true,
+//                    Some('e') => true, // TODO exponents
                     Some(_) | None => {
                         self.token = Some(Token::Integer(val,base));
                         return
@@ -260,10 +278,15 @@ impl<'a> LexStream<'a> {
             '\'' => {
                 let ret = self.scan_char();
                 if let Some(c) = ret {
-                    //
                     self.token = Some(Token::Char(c));
                 }
             },
+            // '\"' => {
+            //     let ret = self.scan_str();
+            //     if let Some(s) = ret {
+            //         self.token = Some(Token::Str(s));
+            //     }
+            // },
             _ => {
                 self.token = Some(Token::Symbol(first));
                 return
