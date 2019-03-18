@@ -100,11 +100,12 @@ impl<'a> LexStream<'a> {
     }
 
     fn scan_str(&mut self) -> Option<String> {
-        let mut ret : String;
+        let mut ret = String::new();
         loop {
-            let mut next = self.stream_iter.next();
+            let next = self.stream_iter.next();
             let val = match next { 
                 Some('\"') => {
+                    return Some(ret);
                 },
                 None => {
                     syntax_error(format!("Missing closing string literal"));
@@ -114,23 +115,28 @@ impl<'a> LexStream<'a> {
                     x
                 }
             };
-            let close = self.stream_iter.next();
-            if let Some('\'') = close {
-                Some(val)
-            } else {
-                syntax_error(format!("Missing closing string quote mark"));
-                None
-            }        
+            ret.push(val);
         }
     }
 
     fn scan_char(&mut self) -> Option<char> {
-        let next = self.stream_iter.next();
+        let mut next = self.stream_iter.next();
+
+        if let Some('\\') = next {
+            next = self.stream_iter.next();
+        }
+
         let val = match next {
             Some('\'') => {
                 syntax_error(format!("Char literal cannot be empty"));
                 return None
             },
+            // this means we have a double slashed special symbol, so we should advance here
+            Some('\\') => {
+                syntax_error(format!("We have a triple-escaped character which is invalid"));
+
+                return None
+            }
             None => {
                 syntax_error(format!("Missing closing character literal"));
                 return None;
@@ -223,75 +229,83 @@ impl<'a> LexStream<'a> {
     }
 
     pub fn next_token(&mut self) {
-        let first = match self.stream_iter.next() {
-            Some(x) => x,
-            None => {
-                self.token = None;
-                return
-            }
-        };
+        loop {
+            let first = match self.stream_iter.next() {
+                Some(x) => x,
+                None => {
+                    self.token = None;
+                    return
+                }
+            };
 
-        match first {
-            '.' => {
-                self.token = Some(Token::Float(self.scan_float(0)));
-            }
-            '0'..='9' => {
-                let (val,base) = self.scan_int(first);
-                let is_float = match self.stream_iter.peek() {
-                    Some('.') => true,
-//                    Some('e') => true, // TODO exponents
-                    Some(_) | None => {
-                        self.token = Some(Token::Integer(val,base));
+            match first {
+                ' ' | '\n' | '\r' | '\t' => {
+                }
+                '.' => {
+                    self.token = Some(Token::Float(self.scan_float(0)));
+                    return
+                }
+                '0'..='9' => {
+                    let (val,base) = self.scan_int(first);
+                    let is_float = match self.stream_iter.peek() {
+                        Some('.') => true,
+    //                    Some('e') => true, // TODO exponents
+                        Some(_) | None => {
+                            self.token = Some(Token::Integer(val,base));
+                            return
+                        }
+                    };
+                    if is_float && base == TokenMod::Dec || base == TokenMod::Oct {
+                        self.stream_iter.next(); //consume the .
+                        self.token = Some(Token::Float(self.scan_float(val)));
                         return
                     }
-                };
-                if is_float && base == TokenMod::Dec || base == TokenMod::Oct {
-                    self.stream_iter.next(); //consume the .
-                    self.token = Some(Token::Float(self.scan_float(val)));
-                }
-            },
-            'a'..='z' | 'A'..='Z' | '_' => {
-                let mut name = String::new();
-                name.push(first);
+                },
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    let mut name = String::new();
+                    name.push(first);
 
-                loop {
-                    {
-                        let peek = match self.stream_iter.peek() {
-                            Some(x) => x,
-                            None => {
-                                self.token = Some(Token::Name(name));
-                                return
+                    loop {
+                        {
+                            let peek = match self.stream_iter.peek() {
+                                Some(x) => x,
+                                None => {
+                                    self.token = Some(Token::Name(name));
+                                    return
+                                }
+                            };
+
+                            if peek.is_alphanumeric() {
+                                name.push(*peek);
+                            } else {
+                                break;
                             }
-                        };
-
-                        if peek.is_alphanumeric() {
-                            name.push(*peek);
-                        } else {
-                            break;
                         }
+                        self.stream_iter.next();
                     }
-                    self.stream_iter.next();
+                    self.token = Some(Token::Name(name));
+                    return
+                },
+                '\'' => {
+                    let ret = self.scan_char();
+                    if let Some(c) = ret {
+                        self.token = Some(Token::Char(c));
+                    }
+                    return
+                },
+                '\"' => {
+                    let ret = self.scan_str();
+                    if let Some(s) = ret {
+                        self.token = Some(Token::Str(s));
+                    }
+                    return
+                },
+                _ => {
+                    self.token = Some(Token::Symbol(first));
+                    return
                 }
-                self.token = Some(Token::Name(name));
-                return
-            },
-            '\'' => {
-                let ret = self.scan_char();
-                if let Some(c) = ret {
-                    self.token = Some(Token::Char(c));
-                }
-            },
-            // '\"' => {
-            //     let ret = self.scan_str();
-            //     if let Some(s) = ret {
-            //         self.token = Some(Token::Str(s));
-            //     }
-            // },
-            _ => {
-                self.token = Some(Token::Symbol(first));
-                return
-            }
-        };
+            };
+        }
     }
 
     pub fn get_token(&self) -> Option<Token> {

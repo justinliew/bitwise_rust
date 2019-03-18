@@ -10,7 +10,7 @@ use lexer::LexStream;
 // TODO more tests, better way of doing tests
 
 pub fn lex_test() {
-    println!("Lex Test 1");
+    println!("\n\nLex Test 1");
     let input = "XY+(XY)_HELLO1,234+FOO!994";
     let mut stream = LexStream::init(input);
     loop  {
@@ -22,8 +22,8 @@ pub fn lex_test() {
     }
 
     // TODO whitepsace
-    println!("Lex Test 2");
-    let input2 = ".2453678 123 'c'";
+    println!("\n\nLex Test 2");
+    let input2 = ".2453678 123 'c' 'c'";
     let mut stream2 = LexStream::init(input2);
     loop  {
         stream2.next_token();
@@ -33,8 +33,8 @@ pub fn lex_test() {
         }
     }
 
-    println!("Lex Test 3");
-    let input3 = "'\n' 123";
+    println!("\n\nLex Test 3");
+    let input3 = r#"'\t' "justin liew""#;
     let mut stream3 = LexStream::init(input3);
     loop  {
         stream3.next_token();
