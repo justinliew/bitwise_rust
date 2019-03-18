@@ -140,7 +140,13 @@ fn run_bytecode(code: &[u64]) -> u64 {
     loop {
         let v = match iter.next() {
             Some(x) => x,
-            None => return *stack.first().unwrap() // TODO ensure this is the right answer and that the stack is 1 element
+            None => {
+                if stack.len() == 1 {
+                    return *stack.first().unwrap()
+                } else {
+                    &HALT
+                }
+            }
         };
 
         match *v {
@@ -180,7 +186,7 @@ fn run_bytecode(code: &[u64]) -> u64 {
                 stack.push(rval / lval);
             },
             NEG => {
-                // TODO how do we handle negative numbers?
+                // how do we handle negative numbers?
                 // assert!(stack.len()>=1, "malformed bytecode; not enough operands for SUB op");
                 // let val = stack.pop().unwrap();
                 // stack.push(-val);
