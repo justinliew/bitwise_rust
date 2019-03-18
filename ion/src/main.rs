@@ -34,7 +34,7 @@ pub fn lex_test() {
     }
 
     println!("Lex Test 3");
-    let input3 = "'ca' 123";
+    let input3 = "'\n' 123";
     let mut stream3 = LexStream::init(input3);
     loop  {
         stream3.next_token();
